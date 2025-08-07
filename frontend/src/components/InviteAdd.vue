@@ -14,6 +14,14 @@
         <input v-model="rolePageRead" type="checkbox" class="form-checkbox mr-2 rounded-md" />
         <label>Page Streaming (Reading)</label>
       </div>
+      <div class="flex flex-row items-center">
+        <input v-model="roleKoboSync" type="checkbox" class="form-checkbox mr-2 rounded-md" />
+        <label>Kobo Sync</label>
+      </div>
+      <div class="flex flex-row items-center">
+        <input v-model="roleKoReaderSync" type="checkbox" class="form-checkbox mr-2 rounded-md" />
+        <label>KOReader Sync</label>
+      </div>
     </div>
     <div class="flex flex-col">
       <label class="font-variable text-lg variation-weight-semibold">Libraries</label>
@@ -80,6 +88,8 @@ const expiresAt = ref<Date>();
 const roleAdmin = ref(false);
 const roleFileDownload = ref(true);
 const rolePageRead = ref(true);
+const roleKoboSync = ref(false);
+const roleKoReaderSync = ref(false);
 
 const computedLibraries = computed(() => {
   return (
@@ -123,6 +133,8 @@ function emitAdd() {
       roleAdmin.value ? "ADMIN" : "",
       roleFileDownload.value ? "FILE_DOWNLOAD" : "",
       rolePageRead.value ? "PAGE_STREAMING" : "",
+      roleKoboSync.value ? "KOBO_SYNC" : "",
+      roleKoReaderSync.value ? "KOREADER_SYNC" : "",
     ].filter((role) => role !== ""),
     expiresAt: unixTimestamp === -1 ? undefined : Math.floor(unixTimestamp / 1000),
   });
