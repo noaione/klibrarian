@@ -126,6 +126,6 @@ fn main() {
 
     let mut writer = File::create(Path::new(&out_dir).join("index_html.rs")).unwrap();
     writer
-        .write_all(format!("pub const INDEX_HTML: &str = r#\"{}\"#;", index_html).as_bytes())
+        .write_all(format!("pub const INDEX_HTML: &str = r#\"{index_html}\"#;").as_bytes())
         .unwrap();
 }

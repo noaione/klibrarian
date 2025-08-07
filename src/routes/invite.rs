@@ -1,21 +1,21 @@
 use std::collections::HashMap;
 
 use axum::{
+    Json, Router,
     extract::{Path, State},
     http::{HeaderMap, StatusCode},
     response::IntoResponse,
-    Json, Router,
 };
 use garde::Validate;
-use redis::{aio::MultiplexedConnection, AsyncCommands};
+use redis::{AsyncCommands, aio::MultiplexedConnection};
 use serde_json::Value;
 use tracing::{error, info};
 
 use crate::{
+    AppState,
     komga::{
         KomgaClient, KomgaUserCreate, KomgaUserCreateOption, KomgaUserCreateOptionSharedLibraries,
     },
-    AppState,
 };
 
 use super::AuthToken;
@@ -441,13 +441,13 @@ pub async fn apply_invite_token(
     Path(token): Path<String>,
     Json(request): Json<InviteTokenApplicationRequest>,
 ) -> impl IntoResponse {
-    if let Err(e) = request.validate(&()) {
+    if let Err(e) = request.validate() {
         let mut headers = HeaderMap::new();
         headers.insert("Content-Type", "application/json".parse().unwrap());
 
         let mut format_err = String::new();
         for (field, err) in e.iter() {
-            format_err.push_str(&format!("- {}: {}", field, err));
+            format_err.push_str(&format!("- {field}: {err}"));
             format_err.push('\n');
         }
 
@@ -495,10 +495,10 @@ pub async fn apply_invite_token(
                             // wrap the json in a {"ok": true, "data": {}} object
                             let mut komga_host = komga.get_host();
 
-                            if let Ok(komga_hostname) = std::env::var("KOMGA_HOSTNAME") {
-                                if !komga_hostname.trim().is_empty() {
-                                    komga_host = komga_hostname.trim().to_owned();
-                                }
+                            if let Ok(komga_hostname) = std::env::var("KOMGA_HOSTNAME")
+                                && !komga_hostname.trim().is_empty()
+                            {
+                                komga_host = komga_hostname.trim().to_owned();
                             }
 
                             let wrapped_json: Value = serde_json::json!({

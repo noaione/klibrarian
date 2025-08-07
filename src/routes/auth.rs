@@ -1,4 +1,4 @@
-use axum::{http::StatusCode, response::IntoResponse, Json, Router};
+use axum::{Json, Router, http::StatusCode, response::IntoResponse};
 
 use crate::AppState;
 

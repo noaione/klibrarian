@@ -1,9 +1,8 @@
 use axum::{
-    async_trait,
-    extract::FromRequestParts,
-    http::{request::Parts, HeaderMap, HeaderValue, StatusCode},
-    response::IntoResponse,
     Router,
+    extract::FromRequestParts,
+    http::{HeaderMap, HeaderValue, StatusCode, request::Parts},
+    response::IntoResponse,
 };
 
 use crate::AppState;
@@ -27,7 +26,6 @@ pub struct RejectAuthToken {
     error: &'static str,
 }
 
-#[async_trait]
 impl<S> FromRequestParts<S> for AuthToken
 where
     S: Send + Sync,
@@ -51,12 +49,10 @@ where
 
                 match HeaderValue::from_str(&token) {
                     Ok(token) => Ok(AuthToken(token)),
-                    Err(_) => {
-                        return Err(RejectAuthToken {
-                            ok: false,
-                            error: "Invalid token format",
-                        });
-                    }
+                    Err(_) => Err(RejectAuthToken {
+                        ok: false,
+                        error: "Invalid token format",
+                    }),
                 }
             } else {
                 Err(RejectAuthToken {

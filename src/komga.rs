@@ -1,4 +1,4 @@
-const USER_AGENT: &str = "K-Librarian/0.1.4 (+https://github.com/noaione/klibrarian)";
+const USER_AGENT: &str = "K-Librarian/0.2.0 (+https://github.com/noaione/klibrarian)";
 
 #[derive(Debug)]
 pub struct KomgaClient {
@@ -76,10 +76,10 @@ impl std::fmt::Display for KomgaViolationsError {
         let mut violations = String::new();
 
         for violation in &self.violations {
-            violations.push_str(&format!("{}\n", violation));
+            violations.push_str(&format!("{violation}\n"));
         }
 
-        write!(f, "{}", violations)
+        write!(f, "{violations}")
     }
 }
 

@@ -1,11 +1,11 @@
 use std::sync::Arc;
 
 use axum::{
+    Router,
     extract::State,
     http::Uri,
     response::{Html, IntoResponse, Redirect},
     routing::get,
-    Router,
 };
 use komga::KomgaClient;
 use tokio::net::TcpListener;
@@ -72,9 +72,9 @@ async fn main() {
     };
     let redis_pass = std::env::var("REDIS_PASS").unwrap_or("".to_string());
 
-    let mut redis_url = format!("redis://{}:{}", redis_host, redis_port);
+    let mut redis_url = format!("redis://{redis_host}:{redis_port}");
     if !redis_pass.is_empty() {
-        redis_url = format!("redis://:{}@{}:{}", redis_pass, redis_host, redis_port);
+        redis_url = format!("redis://:{redis_pass}@{redis_host}:{redis_port}");
     }
 
     tracing::info!("🔌 Connecting to Redis at: {}", redis_url);
@@ -134,7 +134,7 @@ async fn main() {
     let port_at = std::env::var("PORT").unwrap_or("5148".to_string());
 
     // run it
-    let listener = TcpListener::bind(format!("{}:{}", host_at, port_at))
+    let listener = TcpListener::bind(format!("{host_at}:{port_at}"))
         .await
         .unwrap();
     tracing::info!(
