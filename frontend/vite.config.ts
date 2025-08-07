@@ -1,6 +1,6 @@
 import { fileURLToPath, URL } from "node:url";
 
-import { defineConfig, splitVendorChunk } from "vite";
+import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
 import Components from "unplugin-vue-components/vite";
 import VueRouter from "unplugin-vue-router/vite";
@@ -13,26 +13,6 @@ import AutoImport from "unplugin-auto-import/vite";
 import type { ManualChunkMeta } from "rollup";
 import browserslist from "browserslist";
 import { browserslistToTargets } from "lightningcss";
-
-function splitMoreVendorChunk(
-  id: string,
-  getModuleInfo: ManualChunkMeta,
-  extraSplitName?: (id: string) => string | undefined
-): string | undefined {
-  const isVendorChunk = splitVendorChunk();
-
-  if (isVendorChunk(id, getModuleInfo)) {
-    if (typeof extraSplitName === "function") {
-      const extraName = extraSplitName(id);
-
-      if (extraName) {
-        return `vendor.${extraName}`;
-      }
-    }
-
-    return "vendor";
-  }
-}
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -72,42 +52,6 @@ export default defineConfig({
     cssCodeSplit: false,
     target: "es2022",
     modulePreload: false,
-    rollupOptions: {
-      output: {
-        manualChunks: (id, getModuleInfo) => {
-          if (id.includes("src/assets/")) {
-            // get everything after "src/assets/"
-            const [, assetPath] = id.split("src/assets/");
-            // remove the extension
-            const [assetName] = assetPath.split(".");
-
-            return `meta/${assetName.replace("/", ".").replace("_", ".")}`;
-          }
-
-          if (id.includes("/pages") && !id.startsWith("virtual:")) {
-            const [, routesPath] = id.split("src/pages/");
-            const [routesName] = routesPath.split(".");
-            const safeRoutesName = routesName.replace("_", ".").replace("[", "_").replace("]", "");
-
-            return `pages/${safeRoutesName}`;
-          }
-
-          return splitMoreVendorChunk(id, getModuleInfo, (intId) => {
-            const isVueRelated = ["@vue", "vue-i18n", "@intlify", "vue-router"].some((name) => {
-              return intId.includes(name);
-            });
-
-            if (isVueRelated) {
-              return "vue";
-            }
-
-            if (intId.includes("lodash")) {
-              return "lodash";
-            }
-          });
-        },
-      },
-    },
     sourcemap: true,
   },
   css: {
