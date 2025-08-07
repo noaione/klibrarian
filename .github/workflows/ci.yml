@@ -26,9 +26,9 @@ jobs:
           # GNU Linux (x64)
           - [ubuntu-latest, x86_64-unknown-linux-gnu]
           # macOS Intel (x64)
-          - [macos-12, x86_64-apple-darwin]
+          - [macos-latest, x86_64-apple-darwin]
           # macOS Apple Silicon (ARM64)
-          - [macos-14, aarch64-apple-darwin]
+          - [macos-latest, aarch64-apple-darwin]
           # Windows 10 (x64)
           - [windows-latest, x86_64-pc-windows-msvc]
       fail-fast: false
@@ -52,11 +52,6 @@ jobs:
           node-version: 20
           cache: 'npm'
 
-      - name: Prepare build
-        run: |
-          sed -i'' -e 's/# CI-PROFILE-MARK/[profile.release]\nopt-level = "z"\nlto = true\ncodegen-units = 1\npanic = "abort"\nstrip = "debuginfo"/g' Cargo.toml
-        shell: bash
-
       - name: Install dependencies
         run: npm ci
 
@@ -65,21 +60,21 @@ jobs:
 
       - name: Build (Backend)
         run: |
-          cargo build --release --verbose --all --target ${{ matrix.os[1] }}
+          cargo build --profile ci --verbose --all --target ${{ matrix.os[1] }}
         shell: bash
 
       # Package the binary + assets
-      # binary: /target/release/k-librarian.exe
+      # binary: /target/ci/k-librarian.exe
       # assets: /assets/
       - name: Prepare package
         if: matrix.os[0] != 'windows-latest'
         shell: bash
         run: |
           mkdir -p final
-          cd target/${{ matrix.os[1] }}/release
+          cd target/${{ matrix.os[1] }}/ci
           chmod +x k-librarian
           cd ../../..
-          mv target/${{ matrix.os[1] }}/release/k-librarian final/
+          mv target/${{ matrix.os[1] }}/ci/k-librarian final/
           cp -r assets final/
           cp .env.example final/
           cd final
@@ -90,7 +85,7 @@ jobs:
         if: matrix.os[0] == 'windows-latest'
         run: |
           mkdir -p final
-          mv target/${{ matrix.os[1] }}/release/k-librarian.exe final/
+          mv target/${{ matrix.os[1] }}/ci/k-librarian.exe final/
           cp -r assets final/
           cp .env.example final/.env-example
           cd final
