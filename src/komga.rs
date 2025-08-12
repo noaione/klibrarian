@@ -170,7 +170,7 @@ impl KomgaClient {
         } else {
             let error: KomgaCommonError = res.json().await.unwrap();
 
-            Err(KomgaError::KomgaError(error))
+            Err(KomgaError::Common(error))
         }
     }
 
@@ -192,7 +192,7 @@ impl KomgaClient {
         if status_code.is_success() {
             Ok(())
         } else {
-            Err(KomgaError::ApplyUserRestrictionError)
+            Err(KomgaError::ApplyUserRestriction)
         }
     }
 
@@ -230,15 +230,15 @@ impl KomgaClient {
 #[derive(Debug, thiserror::Error)]
 pub enum KomgaError {
     #[error("failed to connect to Komga: {0}")]
-    ConnectionError(#[from] reqwest::Error),
+    Connection(#[from] reqwest::Error),
     #[error("failed to parse Komga response: {0}")]
-    ParseError(#[from] serde_json::Error),
+    Parse(#[from] serde_json::Error),
     #[error("Komga returned an error: {0}")]
-    KomgaError(#[from] KomgaCommonError),
+    Common(#[from] KomgaCommonError),
     #[error("Komga returned a violation error: {0}")]
-    ViolationError(#[from] KomgaViolationsError),
+    Violation(#[from] KomgaViolationsError),
     #[error("failed to apply user restriction")]
-    ApplyUserRestrictionError,
+    ApplyUserRestriction,
     #[error("unknown error occurred")]
-    UnknownError,
+    Unknown,
 }

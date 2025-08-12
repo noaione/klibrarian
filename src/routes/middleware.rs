@@ -15,8 +15,8 @@ pub async fn auth_middleware(State(state): State<AppState>, req: Request, next: 
     if let Some(auth_header) = headers.get(axum::http::header::AUTHORIZATION) {
         if let Ok(auth_value) = auth_header.to_str() {
             // Check if starts with "Bearer "
-            if auth_value.starts_with("Bearer ") {
-                let token_value = &auth_value[7..]; // Skip "Bearer "
+            if let Some(token_value) = auth_value.strip_prefix("Bearer ") {
+                // Skip "Bearer "
                 if token_value == token {
                     next.run(req).await
                 } else {

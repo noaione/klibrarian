@@ -258,7 +258,7 @@ pub async fn create_user_in(
         InviteToken::Navidrome { .. } => {
             match (&state.navidrome, state.config.navidrome_hostname()) {
                 (Some(navidrome), Some(navidrome_host)) => {
-                    create_user_in_navidrome(&state.db, &navidrome, token, payload).await?;
+                    create_user_in_navidrome(&state.db, navidrome, token, payload).await?;
 
                     Ok(navidrome_host.to_string())
                 }
@@ -273,10 +273,6 @@ fn validate_username() -> impl FnOnce(&str, &()) -> garde::Result + 'static {
         let trimmed_value = value.trim();
         if trimmed_value.is_empty() {
             Err(garde::Error::new("Username cannot be empty"))
-        } else if trimmed_value.len() < 1 {
-            Err(garde::Error::new(
-                "Username must be at least 1 character long",
-            ))
         }
         // only check alphanumeric, dash, and underscore
         else if !trimmed_value

@@ -189,7 +189,7 @@ impl NavidromeClient {
         if response.status().is_success() {
             Ok(())
         } else {
-            Err(NavidromeError::ApplyUserRestrictionError)
+            Err(NavidromeError::ApplyUserRestriction)
         }
     }
 }
@@ -208,16 +208,16 @@ pub struct MinimalJwtClaims {
 fn decode_jwt(token: &str) -> Result<MinimalJwtClaims, NavidromeError> {
     let parts: Vec<&str> = token.split('.').collect();
     if parts.len() != 3 {
-        return Err(NavidromeError::JWTDecodeError("Invalid JWT format"));
+        return Err(NavidromeError::JWTDecode("Invalid JWT format"));
     }
 
     let payload = parts[1];
     let decoded_payload = BASE64_URL_SAFE_NO_PAD
         .decode(payload)
-        .map_err(|_| NavidromeError::JWTDecodeError("Failed to decode JWT payload"))?;
+        .map_err(|_| NavidromeError::JWTDecode("Failed to decode JWT payload"))?;
 
     let claims: MinimalJwtClaims = serde_json::from_slice(&decoded_payload)
-        .map_err(|_| NavidromeError::JWTDecodeError("Failed to parse JWT payload"))?;
+        .map_err(|_| NavidromeError::JWTDecode("Failed to parse JWT payload"))?;
 
     Ok(claims)
 }
@@ -225,13 +225,13 @@ fn decode_jwt(token: &str) -> Result<MinimalJwtClaims, NavidromeError> {
 #[derive(Debug, thiserror::Error)]
 pub enum NavidromeError {
     #[error("failed to connect to Navidrome: {0}")]
-    ConnectionError(#[from] reqwest::Error),
+    Connection(#[from] reqwest::Error),
     #[error("failed to parse Navidrome response: {0}")]
-    ParseError(#[from] serde_json::Error),
+    Parse(#[from] serde_json::Error),
     #[error("failed to decode JWT token: {0}")]
-    JWTDecodeError(&'static str),
+    JWTDecode(&'static str),
     #[error("failed to apply user restriction")]
-    ApplyUserRestrictionError,
+    ApplyUserRestriction,
     #[error("unknown error occurred")]
-    UnknownError,
+    Unknown,
 }
