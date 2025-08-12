@@ -147,7 +147,7 @@ async fn main() {
     let port_at = std::env::var("PORT").unwrap_or("5148".to_string());
 
     // run it
-    let run_at = format!("{}:{}", host_at, port_at);
+    let run_at = format!("{host_at}:{port_at}");
     tracing::info!("🚀 Starting K-Librarian at: http://{}", &run_at);
     let listener = TcpListener::bind(run_at).await.unwrap();
     tracing::info!(
