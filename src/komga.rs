@@ -1,6 +1,10 @@
 use crate::{config::KomgaConfig, database::KomgaInviteOption};
 
-const USER_AGENT: &str = "K-Librarian/0.3.0 (+https://github.com/noaione/klibrarian)";
+const USER_AGENT: &str = concat!(
+    "K-Librarian/",
+    env!("CARGO_PKG_VERSION"),
+    " (+https://github.com/noaione/klibrarian)"
+);
 
 pub struct KomgaClient {
     url: String,

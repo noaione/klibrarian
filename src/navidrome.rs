@@ -2,7 +2,11 @@ use base64::{Engine, prelude::BASE64_URL_SAFE_NO_PAD};
 
 use crate::{config::NavidromeConfig, database::NavidromeInviteOption};
 
-const USER_AGENT: &str = "K-Librarian/0.3.0 (+https://github.com/noaione/klibrarian)";
+const USER_AGENT: &str = concat!(
+    "K-Librarian/",
+    env!("CARGO_PKG_VERSION"),
+    " (+https://github.com/noaione/klibrarian)"
+);
 
 #[derive(Debug, serde::Deserialize)]
 struct NavidromeLoginResponse {
