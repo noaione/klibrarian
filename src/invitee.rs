@@ -101,13 +101,18 @@ async fn create_user_in_komga(
             let user = komga.create_user(user_create).await?;
             // Update database with the new user ID
             tracing::info!(
-                "[{}] Applying restrictions for: {}",
+                "[{}] Applying user ID to token: {}",
                 token.token(),
                 &user.id
             );
             database.apply_user_id(token.token(), &user.id).await?;
 
             // Apply user restrictions
+            tracing::info!(
+                "[{}] Applying restrictions for: {}",
+                token.token(),
+                &user.id
+            );
             komga
                 .apply_user_restriction(&user.id, &create_option.into())
                 .await?;
@@ -164,9 +169,17 @@ async fn create_user_in_navidrome(
                 uuid
             );
 
-            navidrome_client
-                .apply_user_library(&uuid, &create_option.into())
-                .await?;
+            if !create_option.is_admin && !create_option.library_ids.is_empty() {
+                navidrome_client
+                    .apply_user_library(&uuid, &create_option.into())
+                    .await?;
+            } else {
+                tracing::info!(
+                    "[{}] Skipping user ID application for admin user: {}",
+                    token.token(),
+                    &uuid
+                );
+            }
 
             // Delete the invite token after successful user creation
             tracing::info!(
@@ -184,18 +197,32 @@ async fn create_user_in_navidrome(
             );
 
             let user = navidrome_client.create_user(user_create).await?;
-            // Update database with the new user ID
+            // Update database with the new user ID if not admin library and has list of libraries
             tracing::info!(
-                "[{}] Applying restrictions for: {}",
+                "[{}] Applying user ID to token: {}",
                 token.token(),
                 &user.id
             );
             database.apply_user_id(token.token(), &user.id).await?;
 
-            // Apply user restrictions
-            navidrome_client
-                .apply_user_library(&user.id, &create_option.into())
-                .await?;
+            if !create_option.is_admin && !create_option.library_ids.is_empty() {
+                // Apply user restrictions
+                tracing::info!(
+                    "[{}] Applying restrictions for: {}",
+                    token.token(),
+                    &user.id
+                );
+
+                navidrome_client
+                    .apply_user_library(&user.id, &create_option.into())
+                    .await?;
+            } else {
+                tracing::info!(
+                    "[{}] Skipping user ID application for admin user: {}",
+                    token.token(),
+                    &user.id
+                );
+            }
 
             // Delete the invite token after successful user creation
             tracing::info!(
