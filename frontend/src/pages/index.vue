@@ -94,8 +94,10 @@ function interceptEnter(event: KeyboardEvent) {
   }
 }
 
-useHeadSafe({
-  title: "K-Librarian",
+onMounted(() => {
+  useHeadSafe({
+    title: "K-Librarian",
+  });
 });
 </script>
 

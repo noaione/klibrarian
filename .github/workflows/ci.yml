@@ -60,21 +60,21 @@ jobs:
 
       - name: Build (Backend)
         run: |
-          cargo build --profile ci --verbose --all --target ${{ matrix.os[1] }}
+          cargo build --profile production --verbose --all --target ${{ matrix.os[1] }}
         shell: bash
 
       # Package the binary + assets
-      # binary: /target/ci/k-librarian.exe
+      # binary: /target/production/k-librarian.exe
       # assets: /assets/
       - name: Prepare package
         if: matrix.os[0] != 'windows-latest'
         shell: bash
         run: |
           mkdir -p final
-          cd target/${{ matrix.os[1] }}/ci
+          cd target/${{ matrix.os[1] }}/production
           chmod +x k-librarian
           cd ../../..
-          mv target/${{ matrix.os[1] }}/ci/k-librarian final/
+          mv target/${{ matrix.os[1] }}/production/k-librarian final/
           cp -r assets final/
           cp .env.example final/
           cd final
@@ -85,7 +85,7 @@ jobs:
         if: matrix.os[0] == 'windows-latest'
         run: |
           mkdir -p final
-          mv target/${{ matrix.os[1] }}/ci/k-librarian.exe final/
+          mv target/${{ matrix.os[1] }}/production/k-librarian.exe final/
           cp -r assets final/
           cp .env.example final/.env-example
           cd final

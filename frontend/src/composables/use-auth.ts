@@ -31,7 +31,7 @@ const useAuth = defineStore(
 
     async function test() {
       try {
-        const resp = await fetch(makeUrl("/api/auth/test"), {
+        const resp = await fetch(makeUrl("/api/invite/info"), {
           headers: {
             Authorization: `Bearer ${token.value}`,
           },

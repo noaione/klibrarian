@@ -1,6 +1,7 @@
-const USER_AGENT: &str = "K-Librarian/0.2.0 (+https://github.com/noaione/klibrarian)";
+use crate::{config::KomgaConfig, database::KomgaInviteOption};
 
-#[derive(Debug)]
+const USER_AGENT: &str = "K-Librarian/0.3.0 (+https://github.com/noaione/klibrarian)";
+
 pub struct KomgaClient {
     url: String,
     username: String,
@@ -47,6 +48,16 @@ pub struct KomgaUserCreateOption {
     pub shared_libraries: Option<KomgaUserCreateOptionSharedLibraries>,
 }
 
+impl From<KomgaInviteOption> for KomgaUserCreateOption {
+    fn from(val: KomgaInviteOption) -> Self {
+        KomgaUserCreateOption {
+            labels_allow: val.labels_allow,
+            labels_exclude: val.labels_exclude,
+            shared_libraries: val.shared_libraries,
+        }
+    }
+}
+
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct KomgaMinimalLibrary {
     pub id: String,
@@ -54,7 +65,7 @@ pub struct KomgaMinimalLibrary {
     pub unavailable: bool,
 }
 
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(serde::Serialize, serde::Deserialize, Debug)]
 pub struct KomgaCommonErrorViolation {
     pub field_name: String,
     pub message: String,
@@ -66,7 +77,7 @@ impl std::fmt::Display for KomgaCommonErrorViolation {
     }
 }
 
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(serde::Serialize, serde::Deserialize, Debug)]
 pub struct KomgaViolationsError {
     pub violations: Vec<KomgaCommonErrorViolation>,
 }
@@ -83,7 +94,9 @@ impl std::fmt::Display for KomgaViolationsError {
     }
 }
 
-#[derive(serde::Serialize, serde::Deserialize)]
+impl std::error::Error for KomgaViolationsError {}
+
+#[derive(serde::Serialize, serde::Deserialize, Debug)]
 pub struct KomgaCommonError {
     timestamp: String,
     status: u16,
@@ -91,6 +104,8 @@ pub struct KomgaCommonError {
     pub message: String,
     path: String,
 }
+
+impl std::error::Error for KomgaCommonError {}
 
 impl std::fmt::Display for KomgaCommonError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -113,19 +128,15 @@ impl KomgaClient {
         }
     }
 
-    pub fn instance() -> Self {
-        let komga_host = std::env::var("KOMGA_HOST").expect("KOMGA_HOST not set");
-        let komga_username = std::env::var("KOMGA_USERNAME").expect("KOMGA_USERNAME not set");
-        let komga_password = std::env::var("KOMGA_PASSWORD").expect("KOMGA_PASSWORD not set");
-
+    pub fn instance(config: &KomgaConfig) -> Self {
         Self::new(
-            komga_host.clone(),
-            komga_username.clone(),
-            komga_password.clone(),
+            config.host.clone(),
+            config.username.clone(),
+            config.password.clone(),
         )
     }
 
-    pub async fn get_me(&self) -> anyhow::Result<KomgaUser> {
+    pub async fn get_me(&self) -> Result<KomgaUser, KomgaError> {
         let client = reqwest::Client::new();
         let res = client
             .get(format!("{}/api/v2/users/me", self.url))
@@ -138,7 +149,7 @@ impl KomgaClient {
         Ok(user)
     }
 
-    pub async fn create_user(&self, user: KomgaUserCreate) -> Result<KomgaUser, KomgaCommonError> {
+    pub async fn create_user(&self, user: KomgaUserCreate) -> Result<KomgaUser, KomgaError> {
         let res = self
             .client
             .post(format!("{}/api/v2/users", self.url))
@@ -155,20 +166,20 @@ impl KomgaClient {
         } else {
             let error: KomgaCommonError = res.json().await.unwrap();
 
-            Err(error)
+            Err(KomgaError::KomgaError(error))
         }
     }
 
     pub async fn apply_user_restriction(
         &self,
-        user_id: String,
-        option: KomgaUserCreateOption,
-    ) -> anyhow::Result<()> {
+        user_id: &str,
+        option: &KomgaUserCreateOption,
+    ) -> Result<(), KomgaError> {
         let res = self
             .client
             .patch(format!("{}/api/v2/users/{}", self.url, user_id))
             .basic_auth(&self.username, Some(&self.password))
-            .json(&option)
+            .json(option)
             .send()
             .await?;
 
@@ -177,11 +188,11 @@ impl KomgaClient {
         if status_code.is_success() {
             Ok(())
         } else {
-            Err(anyhow::anyhow!("Failed to apply user restriction"))
+            Err(KomgaError::ApplyUserRestrictionError)
         }
     }
 
-    pub async fn get_sharing_labels(&self) -> anyhow::Result<Vec<String>> {
+    pub async fn get_sharing_labels(&self) -> Result<Vec<String>, KomgaError> {
         let res = self
             .client
             .get(format!("{}/api/v1/sharing-labels", self.url))
@@ -194,7 +205,7 @@ impl KomgaClient {
         Ok(labels)
     }
 
-    pub async fn get_libraries(&self) -> anyhow::Result<Vec<KomgaMinimalLibrary>> {
+    pub async fn get_libraries(&self) -> Result<Vec<KomgaMinimalLibrary>, KomgaError> {
         let res = self
             .client
             .get(format!("{}/api/v1/libraries", self.url))
@@ -210,4 +221,20 @@ impl KomgaClient {
     pub fn get_host(&self) -> String {
         self.url.clone()
     }
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum KomgaError {
+    #[error("failed to connect to Komga: {0}")]
+    ConnectionError(#[from] reqwest::Error),
+    #[error("failed to parse Komga response: {0}")]
+    ParseError(#[from] serde_json::Error),
+    #[error("Komga returned an error: {0}")]
+    KomgaError(#[from] KomgaCommonError),
+    #[error("Komga returned a violation error: {0}")]
+    ViolationError(#[from] KomgaViolationsError),
+    #[error("failed to apply user restriction")]
+    ApplyUserRestrictionError,
+    #[error("unknown error occurred")]
+    UnknownError,
 }

@@ -17,4 +17,9 @@ assets/**/*.otf
 
 # Other
 .env
+config.toml
 vite.config.ts.timestamp*
+
+.DS_Store
+
+/.klibrarian

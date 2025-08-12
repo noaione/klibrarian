@@ -44,7 +44,9 @@
           <div class="flex flex-row items-center gap-1">
             <span class="font-variable text-sm variation-weight-black">[{{ idx + 1 }}]</span>
             <div class="mr-2 flex flex-row flex-wrap items-center">
-              <span class="font-variable break-all text-sm variation-weight-[550]">{{ invite.token }}</span>
+              <span class="font-variable break-all text-sm variation-weight-[550]">
+                {{ invite.token }} ({{ invite.kind }})
+              </span>
               <span class="mx-2 hidden sm:block">|</span>
               <expiry-time :expires-at="invite.option.expiresAt ?? undefined" />
             </div>
@@ -83,13 +85,15 @@ import useBackend from "@/composables/use-backend";
 import useBackendFetch, { makeUrl } from "@/composables/use-backend-fetch";
 import useInviteConfig from "@/composables/use-invite-config";
 import useToast from "@/composables/use-toast";
-import type { Invite } from "@/types/invites";
+import type { AddEmitKomga, AddEmitNavidrome, Invite } from "@/types/invites";
 
 const auth = useAuth();
 const addMode = ref(false);
 const configInvite = useInviteConfig();
 const toasts = useToast();
 const currentInvites = ref<Invite[]>();
+
+const head = injectHead();
 
 const {
   fetch: inviteFetch,
@@ -144,34 +148,49 @@ async function deleteInvite(token: string) {
   }
 }
 
-async function createInvite(data: {
-  libraries: string[];
-  labels: string[];
-  excludeLabels: string[];
-  roles: string[];
-  expiresAt?: number | null;
-}) {
-  const allLibrary = data.libraries.includes("all") || data.libraries.length === 0;
+function makeRequestConfig(data: AddEmitKomga | AddEmitNavidrome) {
+  if (data.mode === "navidrome") {
+    const jsonData: Record<string, any> = {
+      kind: "navidrome",
+      libraryIds: data.libraries,
+      isAdmin: data.isAdmin,
+    };
+
+    if (data.expiresAt) {
+      jsonData.expiresAt = data.expiresAt;
+    }
+
+    return jsonData;
+  } else {
+    const allLibrary = data.libraries.includes("all") || data.libraries.length === 0;
+
+    const jsonData: Record<string, any> = {
+      kind: "komga",
+      labelsAllow: data.labels,
+      labelsExclude: data.excludeLabels,
+      sharedLibraries: {
+        all: allLibrary,
+        libraryIds: allLibrary ? [] : data.libraries,
+      },
+      roles: data.roles,
+    };
+
+    if (data.expiresAt) {
+      jsonData.expiresAt = data.expiresAt;
+    }
+
+    return jsonData;
+  }
+}
+
+async function createInvite(data: AddEmitKomga | AddEmitNavidrome) {
+  const jsonConfig = makeRequestConfig(data);
 
   addMode.value = false;
 
-  const jsonData: Record<string, any> = {
-    labelsAllow: data.labels,
-    labelsExclude: data.excludeLabels,
-    sharedLibraries: {
-      all: allLibrary,
-      libraryIds: allLibrary ? [] : data.libraries,
-    },
-    roles: data.roles,
-  };
-
-  if (data.expiresAt) {
-    jsonData.expiresAt = data.expiresAt;
-  }
-
   const results = await useBackendFetch<Invite>("/invite", {
     method: "POST",
-    body: JSON.stringify(jsonData),
+    body: JSON.stringify(jsonConfig),
     headers: {
       "Content-Type": "application/json",
     },
@@ -210,7 +229,7 @@ function shareInviteUrl(token: string) {
 }
 
 async function fetchInviteConfigs() {
-  if (!configInvite.inviteConfig?.libraries) {
+  if (!configInvite.inviteConfig?.komga.libraries) {
     await configInvite.fetchInviteConfig();
   }
 }
@@ -229,9 +248,12 @@ function fetchData() {
 
 onMounted(() => {
   if (!auth.isLoggedIn) {
-    useHeadSafe({
-      title: `Login - Admin :: K-Librarian`,
-    });
+    useHeadSafe(
+      {
+        title: `Login - Admin :: K-Librarian`,
+      },
+      { head }
+    );
 
     return;
   }
@@ -240,9 +262,12 @@ onMounted(() => {
     .test()
     .then(() => {
       // Do fetch
-      useHeadSafe({
-        title: `Admin :: K-Librarian`,
-      });
+      useHeadSafe(
+        {
+          title: `Admin :: K-Librarian`,
+        },
+        { head }
+      );
 
       nextTick(() => {
         fetchData();
@@ -257,9 +282,12 @@ watch(
   () => auth.isLoggedIn,
   async (logged) => {
     if (logged) {
-      useHeadSafe({
-        title: `Admin :: K-Librarian`,
-      });
+      useHeadSafe(
+        {
+          title: `Login - Admin :: K-Librarian`,
+        },
+        { head }
+      );
 
       await nextTick();
 
@@ -269,9 +297,12 @@ watch(
         currentInvites.value = reloadPromise;
       }
     } else {
-      useHeadSafe({
-        title: `Login - Admin :: K-Librarian`,
-      });
+      useHeadSafe(
+        {
+          title: `Login - Admin :: K-Librarian`,
+        },
+        { head }
+      );
     }
   }
 );

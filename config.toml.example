@@ -1,0 +1,32 @@
+# The configuration file for k-librarian
+
+# This is the host/port where the k-librarian web server will run.
+host = "127.0.0.1"
+port = 5148
+
+# Your auth token, to access the admin panel.
+token = "this-is-your-auth-token"
+
+# Database path, relative to the current working directory.
+# or the absolute path to the database file.
+db-path = "./.klibrarian/database.sqlite"
+
+[komga]
+# Host and port of the Komga instance
+host = "https://demo.komga.org"
+# Username and password for the Komga instance
+username = "demo@komga.org"
+password = "demo"
+# The actual hostname of Komga, if you prefer to put host as localhost and you're running
+# behind a reverse proxy, you can define this for the actual instances URL.
+# hostname = "https://demo.komga.org"
+
+# [navidrome]
+# # Host and port of the Navidrome instance
+# host = "https://demo.navidrome.org"
+# # Username and password for the Navidrome instance
+# username = ""
+# password = ""
+# # The actual hostname of Navidrome, if you prefer to put host as localhost and you're running
+# # behind a reverse proxy, you can define this for the actual instances URL.
+# # hostname = "https://demo.navidrome.org"

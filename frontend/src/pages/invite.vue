@@ -4,8 +4,27 @@
     <div class="font-variable text-xl variation-weight-bold">K-Librarian</div>
     <hr v-if="inviteData" class="server-width my-4 border-gray-600 opacity-70 dark:border-gray-400" />
     <div v-if="inviteData && !registeredHost" class="server-width flex flex-col justify-start">
-      <span class="font-variable text-center variation-weight-medium">{{ inviteData.token }}</span>
+      <img
+        :src="inviteData.kind === 'komga' ? '/komga-logo.svg' : '/navidrome-logo.png'"
+        class="mx-auto mb-4 h-16 w-16 object-contain"
+      />
+      <span class="font-variable mb-1 text-center variation-weight-bold">Invite to {{ upper(inviteData.kind) }}</span>
+      <span class="font-variable mb-2 text-center variation-weight-medium">{{ inviteData.token }}</span>
       <div class="flex w-full flex-col items-start gap-2">
+        <div class="flex w-full flex-col">
+          <label class="font-variable mb-1 text-sm variation-weight-medium">Username</label>
+          <input
+            v-model="username"
+            type="text"
+            class="form-input w-full transition disabled:cursor-not-allowed disabled:border-opacity-50 disabled:bg-gray-100 dark:bg-gray-800 disabled:dark:bg-gray-900"
+            name="username"
+            :disabled="submitting"
+            required
+          />
+        </div>
+        <div ref="validUserNameRef" class="server-width flex flex-col justify-start gap-1">
+          <div v-for="(error, idx) in validationUsername" :key="idx" class="text-red-400">{{ error }}</div>
+        </div>
         <div class="flex w-full flex-col">
           <label class="font-variable mb-1 text-sm variation-weight-medium">Email</label>
           <input
@@ -18,7 +37,7 @@
           />
         </div>
         <div ref="validUserRef" class="server-width flex flex-col justify-start gap-1">
-          <div v-for="(error, idx) in validationUsername" :key="idx" class="text-red-400">{{ error }}</div>
+          <div v-for="(error, idx) in validationEmail" :key="idx" class="text-red-400">{{ error }}</div>
         </div>
         <div class="flex w-full flex-col">
           <label class="font-variable mb-1 text-sm variation-weight-medium">Password</label>
@@ -98,16 +117,23 @@ const inviteData = ref<Invite>();
 const toast = useToast();
 const submitting = ref(false);
 
+const head = injectHead();
+
 const registeredHost = ref<string>();
 
+const validUserNameRef = ref();
 const validUserRef = ref();
 const validPassRef = ref();
-const validationUsername = ref(["Username/email cannot be empty"]);
+const validationUsername = ref(["Username cannot be empty"]);
+const validationEmail = ref(["Email cannot be empty"]);
 const validationPassword = ref(["Password cannot be empty"]);
 
+const username = ref("");
 const email = ref("");
 const password = ref("");
-const hasValidationError = computed(() => validationUsername.value.length > 0 || validationPassword.value.length > 0);
+const hasValidationError = computed(
+  () => validationEmail.value.length > 0 || validationPassword.value.length > 0 || validationUsername.value.length > 0
+);
 
 async function register() {
   if (hasValidationError.value) {
@@ -131,6 +157,7 @@ async function register() {
       body: JSON.stringify({
         email: email.value,
         password: password.value,
+        username: username.value,
       }),
       headers: {
         "Content-Type": "application/json",
@@ -171,6 +198,10 @@ function isValidEmail(newMail: string) {
   return re.test(newMail);
 }
 
+function upper(str: string) {
+  return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
 onMounted(async () => {
   const searchParam = new URLSearchParams(window.location.search);
 
@@ -190,9 +221,12 @@ onMounted(async () => {
 
     inviteData.value = results;
 
-    useHeadSafe({
-      title: `Invite - ${results.token} :: K-Librarian`,
-    });
+    useHeadSafe(
+      {
+        title: `Invite - ${results.token} :: K-Librarian`,
+      },
+      { head }
+    );
   } catch (error) {
     if (error instanceof Error) {
       toast.toast({
@@ -219,14 +253,30 @@ onMounted(async () => {
 });
 
 watch(
+  () => username.value,
+  (newUser) => {
+    const errorValidation = [];
+    if (newUser.length <= 0) {
+      errorValidation.push("Username cannot be empty");
+    }
+
+    // only allow alphanumeric characters, dash, and underscore
+    if (!/^[a-zA-Z0-9_-]+$/.test(newUser)) {
+      errorValidation.push("Username can only contain alphanumeric characters, dash, and underscore");
+    }
+    validationUsername.value = errorValidation;
+  }
+);
+
+watch(
   () => email.value,
   (newMail) => {
     if (newMail.length === 0) {
-      validationUsername.value = ["Username/email cannot be empty"];
+      validationEmail.value = ["Username/email cannot be empty"];
     } else if (isValidEmail(newMail)) {
-      validationUsername.value = [];
+      validationEmail.value = [];
     } else {
-      validationUsername.value = ["Invalid email"];
+      validationEmail.value = ["Invalid email"];
     }
   }
 );

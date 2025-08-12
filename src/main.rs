@@ -8,7 +8,7 @@ use axum::{
     routing::get,
 };
 use komga::KomgaClient;
-use tokio::net::TcpListener;
+use tokio::{net::TcpListener, sync::Mutex};
 use tower_http::{
     cors::{Any, CorsLayer},
     services::ServeDir,
@@ -19,12 +19,19 @@ use urlencoding::encode;
 
 include!(concat!(env!("OUT_DIR"), "/index_html.rs"));
 
+mod config;
+mod database;
+mod invitee;
 mod komga;
+mod navidrome;
 mod routes;
 
 #[derive(Clone)]
 pub struct AppState {
-    pub redis: Arc<redis::Client>,
+    pub db: Arc<database::LocalDatabase>,
+    pub config: Arc<config::Config>,
+    pub komga: Arc<KomgaClient>,
+    pub navidrome: Option<Arc<Mutex<navidrome::NavidromeClient>>>,
 }
 
 #[tokio::main]
@@ -41,56 +48,33 @@ async fn main() {
     let version = env!("CARGO_PKG_VERSION");
 
     tracing::info!("📚 K-Librarian v{}", version);
-    dotenv::dotenv().ok();
+    let config = config::Config::from_file("config.toml").unwrap_or_else(|e| {
+        tracing::error!("💥 Failed to load configuration: {}", e);
+        std::process::exit(1);
+    });
 
-    match std::env::var("TOKEN") {
-        Ok(_) => {}
-        Err(_) => {
-            tracing::error!("💥 `TOKEN` environment variable is not set!");
-            tracing::error!("💥 Please set it as it's used as your login token to the dashboard");
+    tracing::info!("🔧 Configuration loaded successfully, validating...");
+    config.validate().unwrap_or_else(|e| {
+        tracing::error!("💥 Configuration validation failed: {}", e);
+        std::process::exit(1);
+    });
+    tracing::info!("  ✨ Configuration is valid");
+
+    println!("🔌 Connecting to database at: {}", config.db_path.display());
+    let db = database::LocalDatabase::new(&config.db_path)
+        .await
+        .unwrap_or_else(|e| {
+            tracing::error!("💥 Failed to connect to database: {}", e);
             std::process::exit(1);
-        }
-    }
+        });
+    tracing::info!("  ✨ Connected to database, creating tables if needed...");
+    db.setup().await.unwrap_or_else(|e| {
+        tracing::error!("💥 Failed to setup database: {}", e);
+        std::process::exit(1);
+    });
+    tracing::info!("  ✨ Database setup complete");
 
-    let komga_client = KomgaClient::instance();
-
-    let redis_host = match std::env::var("REDIS_HOST") {
-        Ok(host) => host,
-        Err(_) => {
-            tracing::error!("💥 `REDIS_HOST` environment variable is not set!");
-            tracing::error!("    Please set it as it's used to connect to Redis");
-            std::process::exit(1);
-        }
-    };
-    let redis_port = match std::env::var("REDIS_PORT") {
-        Ok(port) => port,
-        Err(_) => {
-            tracing::error!("💥 `REDIS_PORT` environment variable is not set!");
-            tracing::error!("    Please set it as it's used to connect to Redis");
-            std::process::exit(1);
-        }
-    };
-    let redis_pass = std::env::var("REDIS_PASS").unwrap_or("".to_string());
-
-    let mut redis_url = format!("redis://{redis_host}:{redis_port}");
-    if !redis_pass.is_empty() {
-        redis_url = format!("redis://:{redis_pass}@{redis_host}:{redis_port}");
-    }
-
-    tracing::info!("🔌 Connecting to Redis at: {}", redis_url);
-    let redis_client = redis::Client::open(redis_url).unwrap();
-
-    // Test Redis connection
-    match redis_client.get_multiplexed_async_connection().await {
-        Ok(_) => {
-            tracing::info!("  ✨ Connected to Redis");
-        }
-        Err(e) => {
-            tracing::error!("  💥 Failed to connect to Redis: {}", e);
-            std::process::exit(1);
-        }
-    }
-
+    let komga_client = KomgaClient::instance(&config.komga);
     tracing::info!("🔌 Connecting to Komga at: {}", komga_client.get_host());
     match komga_client.get_me().await {
         Ok(user) => {
@@ -109,8 +93,37 @@ async fn main() {
         }
     };
 
+    let navidrome_client = match &config.navidrome {
+        Some(config) => {
+            tracing::info!("🔌 Connecting to Navidrome at: {}", config.host);
+            match navidrome::NavidromeClient::new(config).await {
+                Ok(client) => {
+                    tracing::info!("  ✨ Connected to Navidrome");
+                    if !client.claims().adm {
+                        tracing::error!(
+                            "  😔 Provided Navidrome user is not an ADMIN, please use an account with admin privilege!"
+                        );
+                        std::process::exit(1);
+                    }
+                    Some(Arc::new(Mutex::new(client)))
+                }
+                Err(e) => {
+                    tracing::error!("  💥 Failed to connect to Navidrome: {}", e);
+                    std::process::exit(1);
+                }
+            }
+        }
+        None => {
+            tracing::info!("🔌 No Navidrome configuration found, skipping connection");
+            None
+        }
+    };
+
     let state = AppState {
-        redis: Arc::new(redis_client),
+        db: Arc::new(db),
+        config: Arc::new(config),
+        komga: Arc::new(komga_client),
+        navidrome: navidrome_client,
     };
 
     let assets_dir = ServeDir::new("assets/assets");
@@ -134,9 +147,9 @@ async fn main() {
     let port_at = std::env::var("PORT").unwrap_or("5148".to_string());
 
     // run it
-    let listener = TcpListener::bind(format!("{host_at}:{port_at}"))
-        .await
-        .unwrap();
+    let run_at = format!("{}:{}", host_at, port_at);
+    tracing::info!("🚀 Starting K-Librarian at: http://{}", &run_at);
+    let listener = TcpListener::bind(run_at).await.unwrap();
     tracing::info!(
         "🚀 Fast serving at: http://{}",
         listener.local_addr().unwrap()

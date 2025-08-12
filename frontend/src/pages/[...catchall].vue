@@ -12,7 +12,9 @@
 </template>
 
 <script setup lang="ts">
-useHeadSafe({
-  title: "Page Not Found - 404 :: K-Librarian",
+onMounted(() => {
+  useHeadSafe({
+    title: "Page Not Found - 404 :: K-Librarian",
+  });
 });
 </script>
