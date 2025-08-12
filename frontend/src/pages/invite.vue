@@ -5,7 +5,7 @@
     <hr v-if="inviteData" class="server-width my-4 border-gray-600 opacity-70 dark:border-gray-400" />
     <div v-if="inviteData && !registeredHost" class="server-width flex flex-col justify-start">
       <img
-        :src="inviteData.kind === 'komga' ? '/komga-logo.svg' : '/navidrome-logo.png'"
+        :src="inviteData.kind === 'komga' ? '/assets/komga-logo.svg' : '/assets/navidrome-logo.png'"
         class="mx-auto mb-4 h-16 w-16 object-contain"
       />
       <span class="font-variable mb-1 text-center variation-weight-bold">Invite to {{ upper(inviteData.kind) }}</span>
