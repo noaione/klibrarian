@@ -10,7 +10,7 @@ use tracing::{error, info};
 
 use crate::{
     AppState,
-    database::{InviteToken, KomgaInviteOption, NavidromeInviteOption},
+    database::{InviteToken, KomgaInviteOption, NavidromeInviteOption, TokenId},
     invitee::{InviteTokenApplicationPayload, create_user_in},
     routes::middleware::auth_middleware,
 };
@@ -175,7 +175,7 @@ pub async fn get_invite_config(State(state): State<AppState>) -> impl IntoRespon
 
 pub async fn get_invite_token(
     State(state): State<AppState>,
-    Path(token): Path<uuid::Uuid>,
+    Path(token): Path<TokenId>,
 ) -> impl IntoResponse {
     let mut headers = HeaderMap::new();
     headers.insert("Content-Type", "application/json".parse().unwrap());
@@ -258,7 +258,7 @@ pub async fn get_invite_token(
 
 pub async fn delete_invite_token(
     State(state): State<AppState>,
-    Path(token): Path<uuid::Uuid>,
+    Path(token): Path<TokenId>,
 ) -> impl IntoResponse {
     let mut headers = HeaderMap::new();
     headers.insert("Content-Type", "application/json".parse().unwrap());
@@ -292,7 +292,7 @@ pub async fn delete_invite_token(
 
 pub async fn apply_invite_token(
     State(state): State<AppState>,
-    Path(token): Path<uuid::Uuid>,
+    Path(token): Path<TokenId>,
     Json(request): Json<InviteTokenApplicationPayload>,
 ) -> impl IntoResponse {
     if let Err(e) = request.validate() {
